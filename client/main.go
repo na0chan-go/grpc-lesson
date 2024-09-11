@@ -22,7 +22,8 @@ func main() {
 	ctx := context.Background()
 	// callListFiles(c, ctx)
 	// callDownload(c, ctx)
-	callUpload(c, ctx)
+	// callUpload(c, ctx)
+	callUploadAndNotifyProgress(c, ctx)
 }
 
 func callListFiles(c pb.FileServiceClient, ctx context.Context) {
@@ -89,4 +90,64 @@ func callUpload(c pb.FileServiceClient, ctx context.Context) {
 		log.Fatalf("Failed to receive response: %v", err)
 	}
 	log.Printf("Received data size: %v", res.GetSize())
+}
+
+func callUploadAndNotifyProgress(c pb.FileServiceClient, ctx context.Context) {
+	filename := "sports.txt"
+	path := "./storage/" + filename
+	file, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	defer file.Close()
+	stream, err := c.UploadAndNotifyProgress(ctx)
+	if err != nil {
+		log.Fatalf("Failed to call UploadAndNotifyProgress: %v", err)
+	}
+
+	// request
+	buf := make([]byte, 5)
+	// ファイルの読み込みを行う
+	go func() {
+		for {
+			n, err := file.Read(buf)
+			if n == 0 || err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Failed to read file: %v", err)
+			}
+			req := &pb.UploadAndNotifyProgressRequest{
+				Data: buf[:n],
+			}
+			if err := stream.Send(req); err != nil {
+				log.Fatalf("Failed to send request: %v", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+		// ファイルの読み込みが終了したらストリームを閉じる
+		if err := stream.CloseSend(); err != nil {
+			log.Fatalf("Failed to close stream: %v", err)
+		}
+	}()
+
+	// response
+	ch := make(chan struct{})
+	// ストリームからのレスポンスを受け取る
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("Failed to receive response: %v", err)
+			}
+			log.Printf("Received message: %v", res.GetMessage())
+		}
+		// ストリームが閉じられたらチャネルを閉じる
+		close(ch)
+	}()
+	// チャネルが閉じられるまで待つ
+	<-ch
 }
