@@ -10,12 +10,20 @@ import (
 	"github.com/na0chan-go/grpc-lesson/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	// 証明書を読み込む
+	certFile := "/Users/naocha/Library/Application Support/mkcert/rootCA.pem"
+	creds, err := credentials.NewClientTLSFromFile(certFile, "")
+	if err != nil {
+		log.Fatalf("Failed to load credentials: %v", err)
+	}
+	// サーバーに接続
+	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(creds))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
@@ -43,7 +51,7 @@ func callListFiles(c pb.FileServiceClient, ctx context.Context) {
 
 func callDownload(c pb.FileServiceClient, ctx context.Context) {
 	// タイムアウトを設定
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req := &pb.DownloadRequest{
