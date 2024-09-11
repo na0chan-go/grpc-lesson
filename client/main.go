@@ -9,6 +9,7 @@ import (
 
 	"github.com/na0chan-go/grpc-lesson/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -27,6 +28,10 @@ func main() {
 }
 
 func callListFiles(c pb.FileServiceClient, ctx context.Context) {
+	// ヘッダーを追加
+	md := metadata.New(map[string]string{"authorization": "Bearer test-token"})
+	// ヘッダーをコンテキストに追加
+	ctx = metadata.NewOutgoingContext(ctx, md)
 	res, err := c.ListFiles(ctx, &pb.ListFilesRequest{})
 	if err != nil {
 		log.Fatalf("Failed to call ListFiles: %v", err)
