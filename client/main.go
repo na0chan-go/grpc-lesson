@@ -20,10 +20,10 @@ func main() {
 
 	c := pb.NewFileServiceClient(conn)
 	ctx := context.Background()
-	// callListFiles(c, ctx)
+	callListFiles(c, ctx)
 	// callDownload(c, ctx)
 	// callUpload(c, ctx)
-	callUploadAndNotifyProgress(c, ctx)
+	// callUploadAndNotifyProgress(c, ctx)
 }
 
 func callListFiles(c pb.FileServiceClient, ctx context.Context) {
