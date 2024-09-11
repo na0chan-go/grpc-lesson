@@ -96,6 +96,34 @@ func (s *server) Upload(stream pb.FileService_UploadServer) error {
 	}
 }
 
+func (s *server) UploadAndNotifyProgress(stream pb.FileService_UploadAndNotifyProgressServer) error {
+	fmt.Println("UploadAndNotifyProgress was invoked")
+
+	size := 0
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		data := req.GetData()
+		log.Printf("Received data: %v", data)
+		size += len(data)
+
+		res := &pb.UploadAndNotifyProgressResponse{
+			Message: fmt.Sprintf("Received %d bytes", size),
+		}
+		if err := stream.Send(res); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	lis, err := net.Listen("tcp", "localhost:50051")
 	if err != nil {
