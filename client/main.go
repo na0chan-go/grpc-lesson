@@ -9,7 +9,9 @@ import (
 
 	"github.com/na0chan-go/grpc-lesson/pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -21,15 +23,15 @@ func main() {
 
 	c := pb.NewFileServiceClient(conn)
 	ctx := context.Background()
-	callListFiles(c, ctx)
-	// callDownload(c, ctx)
+	// callListFiles(c, ctx)
+	callDownload(c, ctx)
 	// callUpload(c, ctx)
 	// callUploadAndNotifyProgress(c, ctx)
 }
 
 func callListFiles(c pb.FileServiceClient, ctx context.Context) {
 	// ヘッダーを追加
-	md := metadata.New(map[string]string{"authorization": "Bearer test-token"})
+	md := metadata.New(map[string]string{"authorization": "Bearer bad-token"})
 	// ヘッダーをコンテキストに追加
 	ctx = metadata.NewOutgoingContext(ctx, md)
 	res, err := c.ListFiles(ctx, &pb.ListFilesRequest{})
@@ -41,7 +43,7 @@ func callListFiles(c pb.FileServiceClient, ctx context.Context) {
 
 func callDownload(c pb.FileServiceClient, ctx context.Context) {
 	req := &pb.DownloadRequest{
-		Filename: "name.txt",
+		Filename: "namea.txt",
 	}
 	stream, err := c.Download(ctx, req)
 	if err != nil {
@@ -53,7 +55,16 @@ func callDownload(c pb.FileServiceClient, ctx context.Context) {
 			break
 		}
 		if err != nil {
-			log.Fatalf("Failed to receive data: %v", err)
+			resErr, ok := status.FromError(err)
+			if ok {
+				if resErr.Code() == codes.NotFound {
+					log.Fatalf("Error Code: %v, Error Message: %v", resErr.Code(), resErr.Message())
+				} else {
+					log.Fatalf("Unknown grpc error: %v", err)
+				}
+			} else {
+				log.Fatalf("Failed to receive data: %v", err)
+			}
 		}
 		log.Printf("Response from Download(bytes): %v", res.GetData())
 		log.Printf("Response from Download(string): %v", string(res.GetData()))
